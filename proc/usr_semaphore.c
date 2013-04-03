@@ -3,113 +3,124 @@
 #include "kernel/semaphore.h"
 #include "lib/debug.h"
 #include "kernel/assert.h"
+#include "kernel/interrupt.h"
 
-/* Put your function definitions here. */
+spinlock_t usr_semaphore_slock;
 
-/* ------------------ */
 void usr_semaphore_init(void)
 {
-  int u;
-  for (u=0; u < CONFIG_MAX_SEMAPHORES; u++) {
-    usr_semaphore_table[u].owner_pid = -1;
+  int i;
+
+  spinlock_reset(&usr_semaphore_slock);
+  for (i=0; i < CONFIG_MAX_SEMAPHORES; i++) {
+    usr_semaphore_table[i].owner_pid = -1;
   }
 }
 
-void usr_semaphore_process_died(int pid)
+void usr_semaphore_process_died(process_id_t pid)
 {
   KERNEL_ASSERT(pid > -1 && pid < PROCESS_MAX_PROCESSES);
-  int u;
-  for (u=0; u < CONFIG_MAX_SEMAPHORES; u++) {
-    if (usr_semaphore_table[u].owner_pid == pid) {
-      semaphore_destroy((semaphore_t*)usr_semaphore_table[u].kernel_sem);
-      usr_semaphore_table[u].owner_pid = -1;
+  int i;
+  interrupt_status_t intr_status;
+
+  intr_status = _interrupt_disable();
+  spinlock_acquire(&usr_semaphore_slock);
+
+  for (i=0; i < CONFIG_MAX_SEMAPHORES; i++) {
+    if (usr_semaphore_table[i].owner_pid == pid) {
+      semaphore_destroy(usr_semaphore_table[i].kernel_sem);
+      usr_semaphore_table[i].owner_pid = -1;
     }
   }
+  spinlock_release(&usr_semaphore_slock);
+  _interrupt_set_state(intr_status);
 }
 
-int usr_semaphore_create(uint32_t *sem, int val)
+int usr_semaphore_create(usr_sem_t *sem, int val)
 {
-  DEBUG("task1_debug","create\n");
+  interrupt_status_t intr_status;
+  semaphore_t *k_semaphore;
+  process_id_t pid;
+  int i;
 
   if (val < 0)
-    return -1;
+    return USR_SEMAPHORE_ERROR_VAL_NEGATIVE;
 
   sem = sem; /* check that sem is already in memory */
   
-  semaphore_t *semaphore = semaphore_create(val);
-  if (semaphore == NULL)
-    return -2;
-  DEBUG("task1_debug","kernel semaphore is %d\n",(int)semaphore);
-  // lock?
-  process_id_t pid = process_get_current_process();
+  k_semaphore = semaphore_create(val);
+
+  if (k_semaphore == NULL)
+    return USR_SEMAPHORE_ERROR_KERNEL_SEM_NULL;
   
-  
-  // lock?
-  int i;
+  intr_status = _interrupt_disable();
+  spinlock_acquire(&usr_semaphore_slock);
+
+  pid = process_get_current_process();  
+
   for (i = 0; i < CONFIG_MAX_SEMAPHORES; i++) {
     if (usr_semaphore_table[i].owner_pid == -1) {
-      usr_semaphore_table[i].owner_pid = (int)pid;
       break;
     }
   }
   
-  if (i == CONFIG_MAX_SEMAPHORES)
-    return -3;
-  
-  usr_semaphore_table[i].user_sem = (uint32_t) sem;
-  usr_semaphore_table[i].kernel_sem = (uint32_t)semaphore;
+  if (i == CONFIG_MAX_SEMAPHORES) {
+    spinlock_release(&usr_semaphore_slock);
+    _interrupt_set_state(intr_status);
+    return USR_SEMAPHORE_ERROR_SEM_DOES_NOT_EXIST;
+  }
 
+  usr_semaphore_table[i].owner_pid = pid;
+  usr_semaphore_table[i].user_sem = sem;
+  usr_semaphore_table[i].kernel_sem = k_semaphore;
+
+  spinlock_release(&usr_semaphore_slock);
+  _interrupt_set_state(intr_status);
   return 0;
 }
 
-int usr_semaphore_P(uint32_t *sem)
+int usr_semaphore_sem_exist(usr_sem_t *sem)
 {
-  // lock?
-  process_id_t pid = process_get_current_process();
-  
-  // lock?
+  interrupt_status_t intr_status;
+  process_id_t pid;
   int i;
+
+  intr_status = _interrupt_disable();
+  spinlock_acquire(&usr_semaphore_slock);
+  pid  = process_get_current_process();
+  
   for (i = 0; i < CONFIG_MAX_SEMAPHORES; i++) {
     if (usr_semaphore_table[i].owner_pid == pid
-	&& usr_semaphore_table[i].user_sem ==(uint32_t) sem)
+	&& usr_semaphore_table[i].user_sem == sem)
       {
-	DEBUG("task1_debug","P : found match at index %d\n",i);
 	break;
       }
   }
-  
+  spinlock_release(&usr_semaphore_slock);
+  _interrupt_set_state(intr_status);
+
   if (i == CONFIG_MAX_SEMAPHORES) {
-    DEBUG("task1_debug","P: i == 32\n");
-    return -3; }
-
-  semaphore_P((semaphore_t*)usr_semaphore_table[i].kernel_sem);
-  return 0;
-}
-
-int usr_semaphore_V(uint32_t *sem)
-{
-
-  // lock? 
-  process_id_t pid = process_get_current_process();
-  
-  // lock
-  int i;
-  for (i = 0; i < CONFIG_MAX_SEMAPHORES; i++) {
-    if (usr_semaphore_table[i].owner_pid == pid
-	&& usr_semaphore_table[i].user_sem ==(uint32_t) sem)
-      {
-	DEBUG("task1_debug","V : found match at index %d\n",i);
-	break;
-      }
+    return USR_SEMAPHORE_ERROR_SEM_DOES_NOT_EXIST;
   }
-  
-  if (i == CONFIG_MAX_SEMAPHORES) {
-    DEBUG("task1_debug","V: i == 32\n");
-    return -3; }
-
-  semaphore_V((semaphore_t*)usr_semaphore_table[i].kernel_sem);
-
-  return 0;
+  return i;
 }
 
-/* ---------------- */
+int usr_semaphore_P(usr_sem_t *sem)
+{
+  int index = usr_semaphore_sem_exist(sem);
+  if (index > -1) {
+    semaphore_P(usr_semaphore_table[index].kernel_sem);
+    return 0;
+  }
+  return index;
+}
+
+int usr_semaphore_V(usr_sem_t *sem)
+{
+  int index = usr_semaphore_sem_exist(sem);
+  if (index > -1) {
+    semaphore_V(usr_semaphore_table[index].kernel_sem);
+    return 0;
+  }
+  return index;
+}

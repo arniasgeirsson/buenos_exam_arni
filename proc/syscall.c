@@ -92,7 +92,7 @@ void syscall_handle(context_t *user_context)
   case SYSCALL_FORK:
     V0 = process_fork((void(*)(uint32_t))A1, A2) >= 0 ? 0 : -1;
     break;
-    /* -------------------- */
+    /* --------------------task1.a */
   case SYSCALL_SEM_CREATE:
     V0 = usr_semaphore_create((uint32_t*)A1,A2);
     break;
