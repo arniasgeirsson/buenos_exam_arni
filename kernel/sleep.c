@@ -10,6 +10,8 @@ void thread_sleep(int msec)
 {
   if (msec <= 0)
     return;
+  /* call it as early as possible? */
+  current_thread->msec_start = (int)rtc_get_msec();
 
   thread_table_t *current_thread = thread_get_current_thread_entry();
 
@@ -24,7 +26,6 @@ void thread_sleep(int msec)
   KERNEL_ASSERT(current_thread->msec == -1);
   current_thread->msec = msec;
   //DEBUG("task1_debug","current_thread->msec = %d\n",6);//current_thread->msec);
-  current_thread->msec_start = (int)rtc_get_msec();
   /* reschedule */
   thread_switch(); /* or use yield? probly not */
 }
