@@ -10,11 +10,11 @@ void thread_sleep(int msec)
 {
   if (msec <= 0)
     return;
-  /* call it as early as possible? */
-  current_thread->msec_start = (int)rtc_get_msec();
 
   thread_table_t *current_thread = thread_get_current_thread_entry();
-
+  /* call it as early as possible? */
+  current_thread->msec_start = (int)rtc_get_msec();
+  
   /* prepare thread */
   current_thread->state = THREAD_SLEEPING_TIME;
   /* remove next */

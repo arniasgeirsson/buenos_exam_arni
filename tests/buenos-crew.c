@@ -41,15 +41,15 @@ void reader(int id) {
 }
 
 int main() {
-  int readers = 1, writers = 1;
+  int readers = 40, writers = 3;
   int i;
-  printf("create 1\n");
+  printf("create 1%s\n","");
   syscall_sem_create(&rmutex, 1);
-  printf("create 2\n");
+  printf("create 2%s\n","");
   syscall_sem_create(&wmutex, 1);
-  printf("create 3\n");
+  printf("create 3%s\n","");
   syscall_sem_create(&reading, 1);
-  printf("create 4\n");
+  printf("create 4%s\n","");
   syscall_sem_create(&writing, 1);
   for (i = 0; i < readers; i++) {
     syscall_fork(reader, i);
