@@ -448,7 +448,9 @@ void process_finish(int retval)
     if (--process_table[pid].threads == 0) {
         /* We are the last thread - kill process! */
         vm_destroy_pagetable(thread->pagetable);
-
+	/* ---- */
+	usr_semaphore_process_died(pid);
+	/* ----- */
         finish_given_process(pid, retval);
     }
 
@@ -458,7 +460,6 @@ void process_finish(int retval)
     _interrupt_set_state(intr_status);
     thread_finish();
 }
-
 
 /**
  * We need to pass a bunch of data to the new thread, but we can only

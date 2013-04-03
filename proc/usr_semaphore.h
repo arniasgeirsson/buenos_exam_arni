@@ -16,5 +16,6 @@ void usr_semaphore_init(void);
 int usr_semaphore_create(uint32_t *sem, int val);
 int usr_semaphore_P(uint32_t *sem);
 int usr_semaphore_V(uint32_t *sem);
+void usr_semaphore_process_died(int pid);
 
 #endif

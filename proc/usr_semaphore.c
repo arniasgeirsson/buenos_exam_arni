@@ -2,6 +2,7 @@
 #include "proc/process.h"
 #include "kernel/semaphore.h"
 #include "lib/debug.h"
+#include "kernel/assert.h"
 
 /* Put your function definitions here. */
 
@@ -11,6 +12,18 @@ void usr_semaphore_init(void)
   int u;
   for (u=0; u < CONFIG_MAX_SEMAPHORES; u++) {
     usr_semaphore_table[u].owner_pid = -1;
+  }
+}
+
+void usr_semaphore_process_died(int pid)
+{
+  KERNEL_ASSERT(pid > -1 && pid < PROCESS_MAX_PROCESSES);
+  int u;
+  for (u=0; u < CONFIG_MAX_SEMAPHORES; u++) {
+    if (usr_semaphore_table[u].owner_pid == pid) {
+      semaphore_destroy((semaphore_t*)usr_semaphore_table[u].kernel_sem);
+      usr_semaphore_table[u].owner_pid = -1;
+    }
   }
 }
 
