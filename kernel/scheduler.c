@@ -199,11 +199,24 @@ void scheduler_schedule(void)
 	current_thread->state = THREAD_FREE;
     } else if(current_thread->sleeps_on != 0) {
 	current_thread->state = THREAD_SLEEPING;
-    } else {
+    } 
+    /* -------- */
+    else if (current_thread->state == THREAD_SLEEPING_TIME) {
+      //nothing
+    }
+    /* ---------- */
+    else {
 	if(scheduler_current_thread[this_cpu] != IDLE_THREAD_TID)
 	    scheduler_add_to_ready_list(scheduler_current_thread[this_cpu]);
 	current_thread->state = THREAD_READY;
     }
+
+    /* ------- */
+    /* Update all the sleeping threads */
+
+    thread_update_time_sleeping_threads();
+
+    /* --------- */
 
     t = scheduler_remove_first_ready();
     thread_table[t].state = THREAD_RUNNING;

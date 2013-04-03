@@ -50,7 +50,10 @@ typedef enum {
     THREAD_READY,
     THREAD_SLEEPING,
     THREAD_NONREADY,
-    THREAD_DYING
+    THREAD_DYING,
+    /* --- */
+    THREAD_SLEEPING_TIME
+    /* --- */
 } thread_state_t;
 
 #define IDLE_THREAD_TID 0
@@ -76,10 +79,17 @@ typedef struct {
     /* pointer to the next thread in list (<0 = end of list) */
     TID_t next; 
 
-    /* pad to 64 bytes */
-    uint32_t dummy_alignment_fill[9]; 
-} thread_table_t;
+  /* -- */
+  int msec;
+  int msec_start;
+  /* -- */
 
+    /* pad to 64 bytes */
+    uint32_t dummy_alignment_fill[7];
+
+
+} thread_table_t;
+    
 /* function prototypes */
 void thread_table_init(void);
 TID_t thread_create(void (*func)(uint32_t), uint32_t arg);
@@ -94,7 +104,10 @@ void thread_switch(void);
 void thread_goto_userland(context_t *usercontext);
 
 void thread_finish(void);
-
+    
+/* --- */
+void thread_update_time_sleeping_threads(void);
+/*--- */
 
 #define USERLAND_ENABLE_BIT 0x00000010
 

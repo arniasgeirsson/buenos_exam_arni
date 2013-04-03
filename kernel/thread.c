@@ -43,6 +43,7 @@
 #include "kernel/config.h"
 #include "kernel/interrupt.h"
 #include "kernel/idle.h"
+#include "drivers/metadev.h"
 
 /** @name Thread library
  *
@@ -321,6 +322,23 @@ void thread_finish(void)
 
     /* not possible without a stack? alternative in assembler? */
     KERNEL_PANIC("thread_finish(): thread was not destroyed");
+}
+
+
+void thread_update_time_sleeping_threads(void)
+{
+  int i;
+  thread_table_t *thread;
+  int time_now;
+  for (i=0; i < CONFIG_MAX_THREADS; i++) {
+    thread = &thread_table[i];
+    if (thread->state == THREAD_SLEEPING_TIME) {
+      time_now = (int)rtc_get_msec();
+      if (time_now - thread->msec_start >= thread->msec) {
+	scheduler_add_ready(i);
+      }
+    }
+  }
 }
 
 /** @} */
