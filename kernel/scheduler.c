@@ -216,3 +216,8 @@ void scheduler_schedule(void)
     timer_set_ticks(_get_rand(CONFIG_SCHEDULER_TIMESLICE) + 
                     CONFIG_SCHEDULER_TIMESLICE / 2);
 }
+
+int scheduler_is_ready_queue_empty(void)
+{
+  return scheduler_ready_to_run.tail < 0;
+}

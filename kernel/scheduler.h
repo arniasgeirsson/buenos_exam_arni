@@ -44,4 +44,6 @@ void scheduler_init(void);
 void scheduler_add_ready(TID_t t);
 void scheduler_schedule(void);
 
+int scheduler_is_ready_queue_empty(void);
+
 #endif /* BUENOS_KERNEL_SCHEDULER_H */

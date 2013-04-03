@@ -45,6 +45,16 @@
 #include "fs/vfs.h"
 #include "kernel/thread.h"
 #include "proc/usr_semaphore.h"
+#include "kernel/scheduler.h"
+
+int syscall_yield(void)
+{
+  if (scheduler_is_ready_queue_empty())
+    return -1;
+
+  thread_switch();
+  return 0;
+}
 
 /**
  * Handle system calls. Interrupts are enabled when this function is
@@ -101,6 +111,9 @@ void syscall_handle(context_t *user_context)
     break;
   case SYSCALL_SEM_V:
     V0 = usr_semaphore_V((uint32_t*)A1);
+    break;
+  case SYSCALL_YIELD:
+    V0 = syscall_yield();
     break;
     /* ---------------------*/
   default:
