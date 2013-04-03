@@ -46,7 +46,9 @@
 #include "kernel/thread.h"
 #include "proc/usr_semaphore.h"
 #include "kernel/scheduler.h"
+#include "kernel/sleep.h"
 
+/* --------- */
 int syscall_yield(void)
 {
   if (scheduler_is_ready_queue_empty())
@@ -56,6 +58,12 @@ int syscall_yield(void)
   return 0;
 }
 
+int syscall_sleep(int msec)
+{
+  thread_sleep(msec);
+  return 0;
+}
+/* -------- */
 /**
  * Handle system calls. Interrupts are enabled when this function is
  * called.
@@ -102,7 +110,7 @@ void syscall_handle(context_t *user_context)
   case SYSCALL_FORK:
     V0 = process_fork((void(*)(uint32_t))A1, A2) >= 0 ? 0 : -1;
     break;
-    /* --------------------task1.a */
+    /* -------------------- */
   case SYSCALL_SEM_CREATE:
     V0 = usr_semaphore_create((uint32_t*)A1,A2);
     break;
@@ -114,6 +122,9 @@ void syscall_handle(context_t *user_context)
     break;
   case SYSCALL_YIELD:
     V0 = syscall_yield();
+    break;
+  case SYSCALL_SLEEP:
+    V0 = syscall_sleep(A1);
     break;
     /* ---------------------*/
   default:

@@ -10,6 +10,7 @@ uint32_t gg;
 
 void test(int i)
 {
+  if (i==1 || i == 3) syscall_sleep(2000);
   syscall_sem_p((usr_sem_t*)gg);
   printf("Thread %d doing its thing!\n", i);
   A[i] = i*2;

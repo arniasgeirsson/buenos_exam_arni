@@ -43,6 +43,8 @@
 #include "kernel/config.h"
 #include "drivers/timer.h"
 
+#include "lib/debug.h"
+
 /** @name Scheduler
  *
  * This module implements simple round robin scheduler.
@@ -203,6 +205,8 @@ void scheduler_schedule(void)
     /* -------- */
     else if (current_thread->state == THREAD_SLEEPING_TIME) {
       //nothing
+      DEBUG("task1_debug","schedule_schedule: threas is sleeping_time\n");
+      
     }
     /* ---------- */
     else {
@@ -213,8 +217,9 @@ void scheduler_schedule(void)
 
     /* ------- */
     /* Update all the sleeping threads */
-
+    //DEBUG("task1_debug","before updating\n");
     thread_update_time_sleeping_threads();
+    //DEBUG("task1_debug","after updating\n");
 
     /* --------- */
 

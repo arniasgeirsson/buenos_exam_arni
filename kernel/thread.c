@@ -45,6 +45,8 @@
 #include "kernel/idle.h"
 #include "drivers/metadev.h"
 
+#include "lib/debug.h"
+
 /** @name Thread library
  *
  * Library containing thread creation, control and destruction functions.
@@ -92,7 +94,11 @@ void thread_table_init(void)
 	thread_table[i].sleeps_on    = 0;
 	thread_table[i].pagetable    = NULL;
 	thread_table[i].process_id   = -1;	
-	thread_table[i].next         = -1;	
+	thread_table[i].next         = -1;
+	/* ---- */
+	thread_table[i].msec         = -1;
+	thread_table[i].msec_start   = -1;
+	/* ---- */
     }
 
     thread_table[IDLE_THREAD_TID].context->cpu_regs[MIPS_REGISTER_SP] =
@@ -172,7 +178,10 @@ TID_t thread_create(void (*func)(uint32_t), uint32_t arg)
     thread_table[tid].sleeps_on    = 0;
     thread_table[tid].process_id   = -1;
     thread_table[tid].next         = -1;
-
+    /* ---- */
+    thread_table[tid].msec           = -1;
+    thread_table[tid].msec_start     = -1;
+    /* ---- */
     /* Make sure that we always have a valid back reference on context chain */
     thread_table[tid].context->prev_context = thread_table[tid].context;
 
@@ -330,12 +339,25 @@ void thread_update_time_sleeping_threads(void)
   int i;
   thread_table_t *thread;
   int time_now;
+  interrupt_status_t intr_status;
+
   for (i=0; i < CONFIG_MAX_THREADS; i++) {
     thread = &thread_table[i];
-    if (thread->state == THREAD_SLEEPING_TIME) {
+    if (thread->state == THREAD_SLEEPING_TIME && thread->msec > 0) {
       time_now = (int)rtc_get_msec();
+      DEBUG("task1_debug","comparing (%d - %d) >= %d\n",time_now,thread->msec_start,thread->msec);
       if (time_now - thread->msec_start >= thread->msec) {
+	thread->msec = -1;
+	thread->msec_start = -1;
+	DEBUG("task1_debug","found thread that has done sleeping\n");
+	spinlock_release(&thread_table_slock);
+	intr_status = _interrupt_enable();
+	
 	scheduler_add_ready(i);
+	
+	_interrupt_set_state(intr_status);
+	spinlock_acquire(&thread_table_slock);
+	DEBUG("task1_debug","found thread that has done sleeping222222\n");
       }
     }
   }
