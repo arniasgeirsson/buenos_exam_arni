@@ -39,7 +39,6 @@
 
 #include "drivers/gcd.h"
 #include "lib/types.h"
-#include "proc/usr_semaphore.h"
 
 #define USERLAND_STACK_TOP 0x7fffeffc
 
@@ -77,7 +76,6 @@ typedef struct {
     uint32_t heap_end; /* End of heap. */
     uint32_t heap_size; /* Size of heap. */
     uint32_t exitfn; /* exit code address for forked threads (a fn. ptr.) */
-  sem_pair_t semaphore_table2[32];
 } process_table_t;
 
 /* Run process in new thread, returns PID of new process. */

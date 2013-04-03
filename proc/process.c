@@ -66,19 +66,8 @@ void process_init()
     for (i = 0; i <= PROCESS_MAX_PROCESSES; i++) {
         process_table[i].state = PROCESS_FREE;
         process_table[i].executable[0] = 0;
-	/* --------------------- */
-	//DEBUG("task1_debug","Here\n");
-	int u;
-	for (u=0; u < 32; u++) {
-	  //DEBUG("task1_debug","Middle\n");
-	  process_table[i].semaphore_table2[u].free = 1;
-	  // DEBUG("task1_debug","Middle2\n");
-	}
-	//DEBUG("task1_debug","There\n");
-	/* ------------------------ */
     }
 }
-
 
 process_id_t alloc_process_id(process_state_t newstate)
 {

@@ -6,6 +6,13 @@
 /* Put your function definitions here. */
 
 /* ------------------ */
+void usr_semaphore_init(void)
+{
+  int u;
+  for (u=0; u < CONFIG_MAX_SEMAPHORES; u++) {
+    usr_semaphore_table[u].owner_pid = -1;
+  }
+}
 
 int usr_semaphore_create(uint32_t *sem, int val)
 {
@@ -21,23 +28,23 @@ int usr_semaphore_create(uint32_t *sem, int val)
     return -2;
   DEBUG("task1_debug","kernel semaphore is %d\n",(int)semaphore);
   // lock?
-  process_table_t *pcb = process_get_current_process_entry();
+  process_id_t pid = process_get_current_process();
   
   
   // lock?
   int i;
-  for (i = 0; i < 32; i++) {
-    if (pcb->semaphore_table2[i].free == 1) {
-      pcb->semaphore_table2[i].free = 0;
+  for (i = 0; i < CONFIG_MAX_SEMAPHORES; i++) {
+    if (usr_semaphore_table[i].owner_pid == -1) {
+      usr_semaphore_table[i].owner_pid = (int)pid;
       break;
     }
   }
   
-  if (i == 32)
+  if (i == CONFIG_MAX_SEMAPHORES)
     return -3;
   
-  pcb->semaphore_table2[i].user_sem = (uint32_t) sem;
-  pcb->semaphore_table2[i].kernel_sem = (uint32_t)semaphore;
+  usr_semaphore_table[i].user_sem = (uint32_t) sem;
+  usr_semaphore_table[i].kernel_sem = (uint32_t)semaphore;
 
   return 0;
 }
@@ -45,25 +52,24 @@ int usr_semaphore_create(uint32_t *sem, int val)
 int usr_semaphore_P(uint32_t *sem)
 {
   // lock?
-  process_table_t *pcb = process_get_current_process_entry();
+  process_id_t pid = process_get_current_process();
   
-
   // lock?
   int i;
-  for (i = 0; i < 32; i++) {
-    if (pcb->semaphore_table2[i].free == 0
-	&& pcb->semaphore_table2[i].user_sem ==(uint32_t) sem)
+  for (i = 0; i < CONFIG_MAX_SEMAPHORES; i++) {
+    if (usr_semaphore_table[i].owner_pid == pid
+	&& usr_semaphore_table[i].user_sem ==(uint32_t) sem)
       {
 	DEBUG("task1_debug","P : found match at index %d\n",i);
 	break;
       }
   }
   
-  if (i == 32) {
+  if (i == CONFIG_MAX_SEMAPHORES) {
     DEBUG("task1_debug","P: i == 32\n");
     return -3; }
 
-  semaphore_P((semaphore_t*)pcb->semaphore_table2[i].kernel_sem);
+  semaphore_P((semaphore_t*)usr_semaphore_table[i].kernel_sem);
   return 0;
 }
 
@@ -71,24 +77,24 @@ int usr_semaphore_V(uint32_t *sem)
 {
 
   // lock? 
-  process_table_t *pcb = process_get_current_process_entry();
+  process_id_t pid = process_get_current_process();
   
   // lock
   int i;
-  for (i = 0; i < 32; i++) {
-    if (pcb->semaphore_table2[i].free == 0
-	&& pcb->semaphore_table2[i].user_sem ==(uint32_t) sem)
+  for (i = 0; i < CONFIG_MAX_SEMAPHORES; i++) {
+    if (usr_semaphore_table[i].owner_pid == pid
+	&& usr_semaphore_table[i].user_sem ==(uint32_t) sem)
       {
 	DEBUG("task1_debug","V : found match at index %d\n",i);
 	break;
       }
   }
   
-  if (i == 32) {
+  if (i == CONFIG_MAX_SEMAPHORES) {
     DEBUG("task1_debug","V: i == 32\n");
     return -3; }
 
-  semaphore_V((semaphore_t*)pcb->semaphore_table2[i].kernel_sem);
+  semaphore_V((semaphore_t*)usr_semaphore_table[i].kernel_sem);
 
   return 0;
 }
