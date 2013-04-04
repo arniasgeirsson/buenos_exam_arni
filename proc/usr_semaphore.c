@@ -4,8 +4,11 @@
 #include "lib/debug.h"
 #include "kernel/assert.h"
 #include "kernel/interrupt.h"
+#include "lib/libc.h"
 
 spinlock_t usr_semaphore_slock;
+
+sem_pair_t usr_semaphore_table[CONFIG_MAX_SEMAPHORES];
 
 void usr_semaphore_init(void)
 {
@@ -36,17 +39,38 @@ void usr_semaphore_process_died(process_id_t pid)
   _interrupt_set_state(intr_status);
 }
 
+/* Expects that you have locked the table */
+int usr_semaphore_find_empty_spot(void)
+{
+  int i;
+  for (i=0; i < CONFIG_MAX_SEMAPHORES; i++) {
+    if (usr_semaphore_table[i].owner_pid == -1)
+      return i;
+  }
+  return -1;
+}
+
+int usr_semaphore_sem_exist(usr_sem_t *sem)
+{
+  return usr_semaphore_table[*sem].owner_pid == process_get_current_process()
+    && usr_semaphore_table[*sem].sem_addr == (uint32_t)sem;
+}
+
 int usr_semaphore_create(usr_sem_t *sem, int val)
 {
   interrupt_status_t intr_status;
   semaphore_t *k_semaphore;
   process_id_t pid;
-  int i;
+  int index;
 
   if (val < 0)
     return USR_SEMAPHORE_ERROR_VAL_NEGATIVE;
 
-  sem = sem; /* check that sem is already in memory */
+  //kprintf("sem_create sem-addr is %d, sem-value is %d\n",sem,(uint32_t)*sem);
+  /* Does this semaphore already exist? */
+  if (usr_semaphore_sem_exist(sem)) {
+    return USR_SEMAPHORE_ERROR_SEM_ALREADY_EXISTS;
+  }
   
   k_semaphore = semaphore_create(val);
 
@@ -58,69 +82,40 @@ int usr_semaphore_create(usr_sem_t *sem, int val)
 
   pid = process_get_current_process();  
 
-  for (i = 0; i < CONFIG_MAX_SEMAPHORES; i++) {
-    if (usr_semaphore_table[i].owner_pid == -1) {
-      break;
-    }
-  }
-  
-  if (i == CONFIG_MAX_SEMAPHORES) {
+  index = usr_semaphore_find_empty_spot();
+  if (index < 0) {
     spinlock_release(&usr_semaphore_slock);
     _interrupt_set_state(intr_status);
-    return USR_SEMAPHORE_ERROR_SEM_DOES_NOT_EXIST;
+    return USR_SEMAPHORE_ERROR_NO_FREE_SEM;
   }
 
-  usr_semaphore_table[i].owner_pid = pid;
-  usr_semaphore_table[i].user_sem = sem;
-  usr_semaphore_table[i].kernel_sem = k_semaphore;
+  *sem = index;
+  //kprintf("sem_create an empty spot was found at index %d (%d)\n",index,(uint32_t)*sem);
+  usr_semaphore_table[index].owner_pid = pid;
+  usr_semaphore_table[index].sem_addr = (uint32_t)sem;
+  usr_semaphore_table[index].kernel_sem = k_semaphore;
 
   spinlock_release(&usr_semaphore_slock);
   _interrupt_set_state(intr_status);
-  return 0;
-}
-
-int usr_semaphore_sem_exist(usr_sem_t *sem)
-{
-  interrupt_status_t intr_status;
-  process_id_t pid;
-  int i;
-
-  intr_status = _interrupt_disable();
-  spinlock_acquire(&usr_semaphore_slock);
-  pid  = process_get_current_process();
-  
-  for (i = 0; i < CONFIG_MAX_SEMAPHORES; i++) {
-    if (usr_semaphore_table[i].owner_pid == pid
-	&& usr_semaphore_table[i].user_sem == sem)
-      {
-	break;
-      }
-  }
-  spinlock_release(&usr_semaphore_slock);
-  _interrupt_set_state(intr_status);
-
-  if (i == CONFIG_MAX_SEMAPHORES) {
-    return USR_SEMAPHORE_ERROR_SEM_DOES_NOT_EXIST;
-  }
-  return i;
+  return USR_SEMAPHORE_SUCCES;
 }
 
 int usr_semaphore_P(usr_sem_t *sem)
 {
-  int index = usr_semaphore_sem_exist(sem);
-  if (index > -1) {
-    semaphore_P(usr_semaphore_table[index].kernel_sem);
-    return 0;
+  //kprintf("p: trying to take sem with addr %d, and value %d\n",sem,(uint32_t)*sem);
+  if (usr_semaphore_sem_exist(sem)) {
+    semaphore_P(usr_semaphore_table[*sem].kernel_sem);
+    return USR_SEMAPHORE_SUCCES;
   }
-  return index;
+  return USR_SEMAPHORE_ERROR_SEM_DOES_NOT_EXIST;
 }
 
 int usr_semaphore_V(usr_sem_t *sem)
 {
-  int index = usr_semaphore_sem_exist(sem);
-  if (index > -1) {
-    semaphore_V(usr_semaphore_table[index].kernel_sem);
-    return 0;
+  //kprintf("v: trying to take sem with addr %d, and value %d\n",sem,(uint32_t)*sem);
+  if (usr_semaphore_sem_exist(sem)) {
+    semaphore_V(usr_semaphore_table[*sem].kernel_sem);
+    return USR_SEMAPHORE_SUCCES;
   }
-  return index;
+  return USR_SEMAPHORE_ERROR_SEM_DOES_NOT_EXIST;
 }

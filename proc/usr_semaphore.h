@@ -9,14 +9,17 @@
 #define USR_SEMAPHORE_ERROR_VAL_NEGATIVE -1
 #define USR_SEMAPHORE_ERROR_KERNEL_SEM_NULL -2
 #define USR_SEMAPHORE_ERROR_SEM_DOES_NOT_EXIST -3
+#define USR_SEMAPHORE_ERROR_NO_FREE_SEM -4
+#define USR_SEMAPHORE_ERROR_SEM_ALREADY_EXISTS -5
+#define USR_SEMAPHORE_SUCCES 0
 
 typedef struct {
   process_id_t owner_pid;
-  usr_sem_t *user_sem;
   semaphore_t *kernel_sem;
+  uint32_t sem_addr;
 } sem_pair_t;
 
-sem_pair_t usr_semaphore_table[CONFIG_MAX_SEMAPHORES];
+//sem_pair_t usr_semaphore_table[CONFIG_MAX_SEMAPHORES];
 
 void usr_semaphore_init(void);
 int usr_semaphore_create(usr_sem_t *sem, int val);
