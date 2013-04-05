@@ -45,6 +45,7 @@ void scheduler_add_ready(TID_t t);
 void scheduler_schedule(void);
 
 /* -- */
+void scheduler_add_time_sleeping_thread(int msec);
 int scheduler_is_ready_queue_empty(void);
 /* -- */
 

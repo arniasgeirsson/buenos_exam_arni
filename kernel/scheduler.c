@@ -42,7 +42,7 @@
 #include "lib/libc.h"
 #include "kernel/config.h"
 #include "drivers/timer.h"
-
+#include "drivers/metadev.h"
 #include "lib/debug.h"
 
 /** @name Scheduler
@@ -63,6 +63,50 @@ static struct {
     TID_t head; /* the first thread in ready to run queue, negative if none */
     TID_t tail; /* the last thread in ready to run queue, negative if none */
 } scheduler_ready_to_run = {-1, -1};
+
+/* ---------- */
+static struct {
+    TID_t head;
+    TID_t tail;
+} scheduler_time_sleeping_threads = {-1, -1};
+
+
+/* only yourself can put you into sleep. */
+void scheduler_add_time_sleeping_thread(int msec)
+{
+  interrupt_status_t intr_status;
+    
+  intr_status = _interrupt_disable();
+  spinlock_acquire(&thread_table_slock);
+
+  TID_t tid = thread_get_current_thread();
+
+  /* call it as early as possible? */
+  thread_table[tid].msec_start = (int)rtc_get_msec();
+  KERNEL_ASSERT(thread_table[tid].msec == -1); /* needed ? */
+  thread_table[tid].msec = msec;
+
+  /* prepare thread */
+  thread_table[tid].state = THREAD_SLEEPING_TIME;
+
+  thread_table[tid].next = -1;
+  if (scheduler_time_sleeping_threads.tail < 0) {
+    scheduler_time_sleeping_threads.head = tid;
+    scheduler_time_sleeping_threads.tail = tid;
+  } else {
+    thread_table[scheduler_time_sleeping_threads.tail].next = tid;
+    scheduler_time_sleeping_threads.tail = tid;
+  }
+
+  spinlock_release(&thread_table_slock);
+  _interrupt_set_state(intr_status);
+}
+
+
+
+/* ---------- */
+
+
 
 /**
  * Initializes the scheduler current thread table to 0 for each processor.
@@ -166,6 +210,68 @@ void scheduler_add_ready(TID_t t)
     _interrupt_set_state(intr_status);
 }
 
+/* ------------- */
+/* This function assumes that the interrupts are disabled and that
+   the thread table spinlock is taken. */
+void scheduler_update_time_sleeping_threads(void)
+{
+  TID_t prev = -1;
+  TID_t next = scheduler_time_sleeping_threads.head;
+  int time_now;
+  interrupt_status_t intr_status;
+  TID_t tid;
+
+  while (next >= 0) {
+    time_now = (int)rtc_get_msec();
+    //kprintf("timenow: %d, msec_start: %d, msec: %d\n",time_now, thread_table[next].msec_start, thread_table[next].msec);
+    if (time_now - thread_table[next].msec_start >= thread_table[next].msec) {
+      	thread_table[next].msec = -1;
+	thread_table[next].msec_start = -1;
+	tid = next;
+	//DEBUG("task1_debug","found thread that has done sleeping\n");
+	if (prev != -1) {
+	  /* is not head */
+	  thread_table[prev].next= thread_table[next].next;
+	  
+	  /* is tail */
+	  if (scheduler_time_sleeping_threads.tail == next) {
+	    scheduler_time_sleeping_threads.tail = prev;
+	  }
+	  prev = prev;
+	  next = thread_table[next].next;
+	} else {
+	  /* is head */
+	  int propnext = thread_table[next].next;
+	  scheduler_time_sleeping_threads.head = propnext;
+	  if (propnext == -1) {
+	    /* is also tail */
+	    scheduler_time_sleeping_threads.tail = -1;
+	  }
+	  next = propnext;
+	  prev = -1;
+	}
+	//kprintf("############next is %d\n",next);
+
+	spinlock_release(&thread_table_slock);
+	intr_status = _interrupt_enable(); 
+
+	scheduler_add_ready(tid);
+	
+	_interrupt_set_state(intr_status);
+	spinlock_acquire(&thread_table_slock);
+	//DEBUG("task1_debug","found thread that has done sleeping222222\n");
+    } else {
+      prev = next;  
+      //kprintf("############111next is %d\n",next);
+      next = thread_table[next].next;
+      //kprintf("############222next is %d\n",next);
+    }
+  }
+  //kprintf("############ out is %d\n",next);
+}
+
+/* ------------- */
+
 
 /**
  * Select next thread for running. Removes the currently running
@@ -205,7 +311,7 @@ void scheduler_schedule(void)
     /* -------- */
     else if (current_thread->state == THREAD_SLEEPING_TIME) {
       //nothing
-      DEBUG("task1_debug","schedule_schedule: threas is sleeping_time\n");
+      //DEBUG("task1_debug","schedule_schedule: threas is sleeping_time\n");
       
     }
     /* ---------- */
@@ -218,7 +324,7 @@ void scheduler_schedule(void)
     /* ------- */
     /* Update all the sleeping threads */
     //DEBUG("task1_debug","before updating\n");
-    thread_update_time_sleeping_threads();
+    scheduler_update_time_sleeping_threads();
     //DEBUG("task1_debug","after updating\n");
 
     /* --------- */
@@ -235,7 +341,11 @@ void scheduler_schedule(void)
                     CONFIG_SCHEDULER_TIMESLICE / 2);
 }
 
+/* ------- */
+
 int scheduler_is_ready_queue_empty(void)
 {
   return scheduler_ready_to_run.tail < 0;
 }
+
+/* ----------- */

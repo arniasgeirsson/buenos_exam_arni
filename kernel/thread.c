@@ -333,36 +333,4 @@ void thread_finish(void)
     KERNEL_PANIC("thread_finish(): thread was not destroyed");
 }
 
-
-/* This function assumes that the interrupts are disabled and that
-   the thread table spinlock is taken. */
-void thread_update_time_sleeping_threads(void)
-{
-  int i;
-  thread_table_t *thread;
-  int time_now;
-  interrupt_status_t intr_status;
-
-  for (i=0; i < CONFIG_MAX_THREADS; i++) {
-    thread = &thread_table[i];
-    if (thread->state == THREAD_SLEEPING_TIME && thread->msec > 0) {
-      time_now = (int)rtc_get_msec();
-      DEBUG("task1_debug","comparing (%d - %d) >= %d\n",time_now,thread->msec_start,thread->msec);
-      if (time_now - thread->msec_start >= thread->msec) {
-	thread->msec = -1;
-	thread->msec_start = -1;
-	DEBUG("task1_debug","found thread that has done sleeping\n");
-	spinlock_release(&thread_table_slock);
-	intr_status = _interrupt_enable();
-	
-	scheduler_add_ready(i);
-	
-	_interrupt_set_state(intr_status);
-	spinlock_acquire(&thread_table_slock);
-	DEBUG("task1_debug","found thread that has done sleeping222222\n");
-      }
-    }
-  }
-}
-
 /** @} */

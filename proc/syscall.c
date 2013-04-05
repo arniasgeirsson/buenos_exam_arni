@@ -48,14 +48,23 @@
 #include "kernel/scheduler.h"
 #include "kernel/sleep.h"
 #include "drivers/metadev.h"
+#include "kernel/interrupt.h"
 
 /* --------- */
 int syscall_yield(void)
 {
-  if (scheduler_is_ready_queue_empty())
+  interrupt_status_t intr_status;
+  intr_status = _interrupt_disable();
+    
+  if (scheduler_is_ready_queue_empty()) {
+    _interrupt_set_state(intr_status);
     return -1;
+  }
 
+  /* thread switch enables interrupts and restores them afterwards. */
   thread_switch();
+  _interrupt_set_state(intr_status);
+
   return 0;
 }
 
@@ -67,7 +76,8 @@ int syscall_sleep(int msec)
   int start = rtc_get_msec();
   thread_sleep(msec);
   int end = rtc_get_msec();
-  if (start-end < msec)
+  //kprintf("start: %d, end: %d, msec: %d\n",start,end,msec);
+  if (end-start < msec)
     return -2; /* Then  thread_sleep failed, although should not happen. */
   return 0;
 }

@@ -1,6 +1,6 @@
 #include "tests/lib.h"
 
-#define NUM_THREADS 1
+#define NUM_THREADS 10
 
 static volatile int done[NUM_THREADS];
 static volatile int order[NUM_THREADS];

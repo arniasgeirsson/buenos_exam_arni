@@ -86,8 +86,6 @@ typedef struct {
 
     /* pad to 64 bytes */
     uint32_t dummy_alignment_fill[7];
-
-
 } thread_table_t;
     
 /* function prototypes */
@@ -104,10 +102,6 @@ void thread_switch(void);
 void thread_goto_userland(context_t *usercontext);
 
 void thread_finish(void);
-    
-/* --- */
-void thread_update_time_sleeping_threads(void);
-/*--- */
 
 #define USERLAND_ENABLE_BIT 0x00000010
 
