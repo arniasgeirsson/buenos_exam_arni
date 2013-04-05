@@ -47,6 +47,7 @@
 #define PROVIDE_FORMATTED_OUTPUT
 #define PROVIDE_HEAP_ALLOCATOR
 #define PROVIDE_MISC
+#define PROVIDE_TIME_FUNCTIONS
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -100,6 +101,12 @@ int syscall_sem_create(usr_sem_t *sem, int val);
 int syscall_sem_p(usr_sem_t *sem);
 int syscall_sem_v(usr_sem_t *sem);
 
+
+/* -------- */
+#ifdef PROVIDE_TIME_FUNCTIONS
+int syscall_get_time_from_start(void);
+#endif
+/* -------- */
 
 #ifdef PROVIDE_STRING_FUNCTIONS
 size_t strlen(const char *s);

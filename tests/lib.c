@@ -213,6 +213,15 @@ int syscall_sem_v(usr_sem_t *sem)
   return (int)_syscall(SYSCALL_SEM_V, (uint32_t)sem, 0, 0);
 }
 
+/* --------- */
+#ifdef PROVIDE_TIME_FUNCTIONS
+int syscall_get_time_from_start(void)
+{
+  return (int)_syscall(SYSCALL_SYSTEM_TIME,0,0,0);
+}
+#endif
+/* --------- */
+
 /* The following functions are not system calls, but convenient
    library functions inspired by POSIX and the C standard library. */
 

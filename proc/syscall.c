@@ -47,6 +47,7 @@
 #include "proc/usr_semaphore.h"
 #include "kernel/scheduler.h"
 #include "kernel/sleep.h"
+#include "drivers/metadev.h"
 
 /* --------- */
 int syscall_yield(void)
@@ -60,7 +61,14 @@ int syscall_yield(void)
 
 int syscall_sleep(int msec)
 {
+  if (msec <= 0)
+    return -1;
+  /* take time and make sure that msec has actually passed? */
+  int start = rtc_get_msec();
   thread_sleep(msec);
+  int end = rtc_get_msec();
+  if (start-end < msec)
+    return -2; /* Then  thread_sleep failed, although should not happen. */
   return 0;
 }
 /* -------- */
@@ -125,6 +133,9 @@ void syscall_handle(context_t *user_context)
     break;
   case SYSCALL_SLEEP:
     V0 = syscall_sleep(A1);
+    break;
+  case SYSCALL_SYSTEM_TIME:
+    V0 = rtc_get_msec();
     break;
     /* ---------------------*/
   default:

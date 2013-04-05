@@ -334,6 +334,8 @@ void thread_finish(void)
 }
 
 
+/* This function assumes that the interrupts are disabled and that
+   the thread table spinlock is taken. */
 void thread_update_time_sleeping_threads(void)
 {
   int i;
