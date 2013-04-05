@@ -5,6 +5,9 @@ usr_sem_t mutex, write, incoming;
 int readcount=0;
 
 
+/* this is not fair, the way I want it to be */
+/* maybe I should redefine my perception of fair? */
+
 void writer(int id) {
   while (1) {
     // producing data
@@ -21,14 +24,16 @@ void reader(int id) {
   while (1) {
     syscall_sem_p(&incoming);
     syscall_sem_p(&mutex);
-    if (++readcount == 1) { syscall_sem_p(&write); }
+    readcount += 1;
+    if (readcount == 1) { syscall_sem_p(&write); }
     syscall_sem_v(&mutex);
     syscall_sem_v(&incoming);
     // reading data
     printf("Reader %d read\n", id);
 
     syscall_sem_p(&mutex);
-    if (--readcount == 0) { syscall_sem_v(&write); }
+    readcount -= 1;
+    if (readcount == 0) { syscall_sem_v(&write); }
     syscall_sem_v(&mutex);
   }
 }

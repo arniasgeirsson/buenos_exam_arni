@@ -12,7 +12,7 @@ util/tfstool write fyams.harddisk tests/task1_test test4
 util/tfstool write fyams.harddisk tests/task1_totalsems test5
 util/tfstool write fyams.harddisk tests/task1_wrongsem test6
 util/tfstool write fyams.harddisk tests/task2_test test7
-yams buenos 'initprog=[disk]test7' task1_debug
+yams buenos 'initprog=[disk]test3' task1_debug
 
 make clean
 cd tests/

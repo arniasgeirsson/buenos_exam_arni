@@ -41,7 +41,7 @@ void reader(int id) {
 }
 
 int main() {
-  int readers = 40, writers = 3;
+  int readers = 10, writers = 3;
   int i;
   printf("create 1%s\n","");
   syscall_sem_create(&rmutex, 1);
