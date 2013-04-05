@@ -1,115 +1,156 @@
 #include "tests/lib.h"
 
-usr_sem_t sem;
-usr_sem_t sem1;
-usr_sem_t sem2;
+static const char prog[] = "[disk]test5";
+
+usr_sem_t sem, sem4;
+
 int runningthreads;
 
 void take_sem(int i)
 {
   int rc;
   rc = syscall_sem_p(&sem);
-  printf("Thread #%d toke the semaphore! rc = %d, was expecting %d\n",i,rc,0);
-  printf("Thread #%d released the semaphore! rc = %d, was expecting %d\n",i,rc,0);
+  printf("3.1: Thread #%d toke the semaphore! rc = %d [%d]\n",i,rc,0);
+  printf("3.1: Thread #%d released the semaphore! rc = %d [%d]\n",i,rc,0);
   runningthreads--;
   rc = syscall_sem_v(&sem);
 }
 
-void control_sem(int i)
+void take_sem2(void)
 {
-  syscall_sem_p(&sem);
-  printf("Controlthread #%d toke the semaphore!\n",i);
+  
 }
 
 int main(void)
 {
   int rc;
-  /* Initial test, testing trying to use a wrong semaphore */
-  
-  /* Trying to create a semaphore on uninitialized semaphore
-     Expecting an error value. */
-  /* When is it unitialized/not in user memory space? */
-  //rc = syscall_sem_create(44,1); -> this results in type error.
-  //printf("1: Return value from sem create is %d, was expecting %d\n",rc,-4);
-
-  /* Trying to create a sem with something thats not a sem
-     Expecting an error value.
-     How is that possible? */
-  /* No, type error. */
-
-  /* Trying to take an unitialized semaphore
-     is similar to trying to use a semaphore that does not belong to you. */
-  rc = syscall_sem_p(&sem1);
-  printf("1: Return value from sem p is %d, was expecting %d\n",rc,-3);
-  /* Trying to take an unitialized semaphore
-     is similar to trying to use a semaphore that does not belong to you. */
-  rc = syscall_sem_v(&sem1);
-  printf("2: Return value from sem v is %d, was expecting %d\n",rc,-3);
-
-  /* initialize the semaphore value */
-  rc = syscall_sem_create(&sem1,1);
-  printf("3: Return value from sem create is %d, was expecting %d\n",rc,0);
-
-  /* again p */
-  rc = syscall_sem_p(&sem1);
-  printf("4: Return value from sem p is now %d, was expecting %d\n",rc,0);
-
-  /* again v */
-  rc = syscall_sem_v(&sem1);
-  printf("5: Return value from sem v is now %d, was expecting %d\n",rc,0);
-
-  /* Try and create again */
-  rc = syscall_sem_create(&sem1,1);
-  printf("6: Return value from sem create is %d, was expecting %d\n",rc,-5);
-
-
-  /* Try and create with negative value */
-  rc = syscall_sem_create(&sem2,-1);
-  printf("7: Return value from sem create is %d, was expecting %d\n",rc,-1);
-
-  /* Try and create with value 0 */
-  /* Is allowed and will create a semaphore that is already
-     locked by the caller */
-  rc = syscall_sem_create(&sem2,0);
-  printf("8: Return value from sem create is %d, was expecting %d\n",rc,0);
-
-  /* Try to execute a new process, that creates a semaphore,
-     and then let this process try and use it. */
-
-  /* Try and use a correct semaphore with different values
-     I expect that all the simulation look alike */
-  /* This test also shows that a thread can use a semaphore,
-     which was created by another thread in that process. */
-  int value = 20;
-  int controlthreads = value - 1;
-  
-  rc = syscall_sem_create(&sem,value);
-  printf("9: Return value from sem create is %d, was expecting %d\n",rc,0);
-  
-  int numthreads = 6;
-  runningthreads = numthreads;  
   int i;
-  for (i=0; i < controlthreads; i++) {
-    printf("Master took a control ticket %d\n",i);
-    syscall_sem_p(&sem);
+  int v;
+  int numthreads;
+  usr_sem_t sem1, sem2, sem3, sem5;
+
+  /* Section 1 - Checking error messages. */
+  printf("Testing assignment 1 - section 1%s\n","");
+
+  /* Test 1: Trying to take an unitialized semaphore. */
+  rc = syscall_sem_p(&sem1);
+  printf("1.1: Return value from sem p is %d [%d]\n",rc,-3);
+
+  /* Test 2: Trying to release an unitialized semaphore. */
+  rc = syscall_sem_v(&sem1);
+  printf("1.2: Return value from sem v is %d [%d]\n",rc,-3);
+
+  /* Test 3: Trying to create a semaphore with a negative value. */
+  rc = syscall_sem_create(&sem1,-1);
+  printf("1.3: Return value from sem create is %d [%d]\n",rc,-1);
+
+  /* Test 4: Trying to create a semaphore that is already in use. */
+  rc = syscall_sem_create(&sem1,1);
+  if (rc != 0) syscall_halt(); /* Something is wrong. */
+  rc = syscall_sem_create(&sem1,1);
+  printf("1.4: Return value from sem create is %d [%d]\n",rc,-5);
+
+  /* Test 5: ####Try to use a semaphore that is not yours. */
+  usr_sem_t addr = 100;
+  rc = syscall_sem_create(&addr,1);
+  if (rc != 0) syscall_halt(); /* Something is wrong. */
+
+  /* Something goes wrong all of the sudden, when i create more than 1 child. */
+  //rc = syscall_join(syscall_exec("[disk]test6"));
+  printf("1.5: Return value from child is %d [%d]\n",rc,-5);
+
+  /* Section 2 - Using a working semaphore. */
+  printf("Testing assignment 1 - section 2%s\n","");
+
+  /* Test 1: Trying to create a semaphore with a positive value. */
+  rc = syscall_sem_create(&sem2,1);
+  printf("2.1: Return value from sem create is %d [%d]\n",rc,0);
+
+  /* Test 2: Trying to take an initialized semaphore. */
+  rc = syscall_sem_p(&sem2);
+  printf("2.2: Return value from sem p is now %d [%d]\n",rc,0);
+
+  /* Test 3: Trying to release an initialized semaphore. */
+  rc = syscall_sem_v(&sem2);
+  printf("2.3: Return value from sem v is now %d [%d]\n",rc,0);
+
+  /* Test x: ####What about releasing sem2 again ? idk is there something speciel supposed to happen? should be moved to section 1? */
+
+  /* Test 4: Trying to create a semaphore with a positive value v, v > 1
+     And trying to take it v times before releasing it v times. */
+  v = 4;
+  rc = syscall_sem_create(&sem3,v);
+  printf("2.4.1: I have now created sem3 with the value of %d.\n",v);
+
+  if (rc != 0) syscall_halt(); /* Something is wrong. */
+  for (i=0; i < v; i++) {
+    rc = syscall_sem_p(&sem3);
+    if (rc != 0) syscall_halt(); /* Something is wrong. */
   }
+  printf("2.4.2: I have now taken sem3 %d times, and nothing has gone wrong.\n",v);
+
+  for (i=0; i < v; i++) {
+    rc = syscall_sem_v(&sem3);
+    if (rc != 0) syscall_halt(); /* Something is wrong. */
+  }
+  printf("2.4.3: I have now released sem3 %d times, and nothing has gone wrong.\n",v);
+
+  /* Test 5: Trying to create a semaphore with a value of 0. */
+  rc = syscall_sem_create(&sem4,0);
+  printf("2.5: Return value from sem create is %d [%d]\n",rc,0);
+
+  /* ###Try and let a thread take the sem above, and see that it can't before master releases it*/
+
+  
+
+  /* Section 3 - Letting other sibling threads use share a semaphore. */
+  printf("Testing assignment 1 - section 3%s\n","");
+
+  /* Test 1: Trying to create a semaphore sem and create and let a number of threads
+     within this process and let them use sem. */
+  
+  rc = syscall_sem_create(&sem,1);
+  if (rc != 0) syscall_halt(); /* Something is wrong. */
+  
+  numthreads = 6;
+  runningthreads = numthreads;  
 
   for (i=0; i < numthreads; i++) {
-    syscall_fork(&take_sem,i);
+    if (syscall_fork(&take_sem,i) < 0) {
+      printf("3.1: Not enough threads could be created, halting!\n");
+      syscall_halt();
+    }
   }
   while (runningthreads != 0);
 
-  /* Testing if semaphores gets destroyed properly */
 
-  /* Since I know there is a bound to how many kernel semaphores can be
-     in use at a time, I can first try and create semaphores until I
-     can't no more. So I know the number of semaphores*/
-  syscall_join(syscall_exec("[disk]test5"));
-  
-  /* Then I can execute a new process that creates a specific amount of
-     semaphores, then dies, and if I can now create as many semaphores as
-     before then they were destroyed properly.*/
-  usr_sem_t sem4;
-  printf("Can I now create a new semaphore? -> %d\n",syscall_sem_create(&sem4,1)==0);
+  /* Section 4 - Making sure semaphores gets destroyed properly. */
+  printf("Testing assignment 1 - section 4%s\n","");
+
+  /* Test 1: Trying to let a new process create as many semaphores as possible,
+     and return the amount of semaphores created.
+     I assume that the process will create enough semaphores to take up all
+     the kernel semaphores, so that no one cannot create a new user semaphore. */
+  int ts = syscall_join(syscall_exec(prog));
+  if (ts < 0) syscall_halt(); /* Something is wrong. */
+
+  /* Now that the process above is dead, I expect that my clean-up handling
+     in my implementation of user semaphores has freed up all the semaphores
+     that the process used. */
+  /* Test 2: Trying to create a as many semaphores as the process could create,
+     showing that all the semaphores created by that process is now free. */
+  int total_sems = 0;
+  while (1) {
+    rc = syscall_sem_create(&sem5,1);
+    if (rc == 0)
+      total_sems++;
+    else 
+      break;
+    sem5++;
+  }
+  printf("4.2: Could create %d semaphores [%d], rc was %d [%d]\n",total_sems,ts,rc,-2);
+
+  //sem5=5;
+  //sem5=sem5;
   return 0;
 }
