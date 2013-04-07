@@ -45,8 +45,6 @@
 #include "kernel/idle.h"
 #include "drivers/metadev.h"
 
-#include "lib/debug.h"
-
 /** @name Thread library
  *
  * Library containing thread creation, control and destruction functions.
@@ -95,10 +93,8 @@ void thread_table_init(void)
 	thread_table[i].pagetable    = NULL;
 	thread_table[i].process_id   = -1;	
 	thread_table[i].next         = -1;
-	/* ---- */
-	thread_table[i].msec         = -1;
-	thread_table[i].msec_start   = -1;
-	/* ---- */
+	thread_table[i].msec         = -1; /* Init state of msec. */
+	thread_table[i].msec_start   = -1; /* Init state of msec_start. */
     }
 
     thread_table[IDLE_THREAD_TID].context->cpu_regs[MIPS_REGISTER_SP] =
@@ -178,10 +174,9 @@ TID_t thread_create(void (*func)(uint32_t), uint32_t arg)
     thread_table[tid].sleeps_on    = 0;
     thread_table[tid].process_id   = -1;
     thread_table[tid].next         = -1;
-    /* ---- */
-    thread_table[tid].msec           = -1;
-    thread_table[tid].msec_start     = -1;
-    /* ---- */
+    thread_table[tid].msec         = -1; /* Init state of msec. */
+    thread_table[tid].msec_start   = -1; /* Init state of msec_start. */
+
     /* Make sure that we always have a valid back reference on context chain */
     thread_table[tid].context->prev_context = thread_table[tid].context;
 

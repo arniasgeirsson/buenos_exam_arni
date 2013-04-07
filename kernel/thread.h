@@ -51,9 +51,8 @@ typedef enum {
     THREAD_SLEEPING,
     THREAD_NONREADY,
     THREAD_DYING,
-    /* --- */
+    /* Marks a thread to be time sleeping. */
     THREAD_SLEEPING_TIME
-    /* --- */
 } thread_state_t;
 
 #define IDLE_THREAD_TID 0
@@ -79,10 +78,14 @@ typedef struct {
     /* pointer to the next thread in list (<0 = end of list) */
     TID_t next; 
 
-  /* -- */
-  int msec;
-  int msec_start;
-  /* -- */
+    /* If the thread is time sleeping then msec holds the specified
+       amount of time in milliseconds. */
+    int msec;
+    
+    /* If the thread is time sleeping then msec_start holds the
+       time elapsed since system startup in milliseconds, when
+       the thread went into sleep. */
+    int msec_start;
 
     /* pad to 64 bytes */
     uint32_t dummy_alignment_fill[7];

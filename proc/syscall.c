@@ -50,12 +50,20 @@
 #include "drivers/metadev.h"
 #include "kernel/interrupt.h"
 
-/* --------- */
+/**
+ * Yields the current thread by manually deschedule the thread.
+ * Nothing is done if the ready queue in the scheduler is empty.
+ *
+ * @return 0 on success and -1 if the ready queue was empty.
+ *
+ * @see scheduler_is_ready_queue_empty
+ */
 int syscall_yield(void)
 {
-  interrupt_status_t intr_status;
-  intr_status = _interrupt_disable();
-    
+  interrupt_status_t intr_status = _interrupt_disable();
+  
+  /* If the ready queue is empty we assume we would be
+     the next to run. */
   if (scheduler_is_ready_queue_empty()) {
     _interrupt_set_state(intr_status);
     return -1;
@@ -68,20 +76,36 @@ int syscall_yield(void)
   return 0;
 }
 
+/**
+ * Makes the calling thread go into sleep for at least the specified amount
+ * of milliseconds.
+ * 
+ * @param msec The specified amount of milliseconds.
+ *
+ * @return 0 on success.
+ * @return -1 if msec is not postive.
+ * @return -2 if the thread slept for less than msec.
+ *
+ * @see sleep_thread_sleep
+ */
 int syscall_sleep(int msec)
 {
+  /* Make sure msec is positive. */
   if (msec <= 0)
     return -1;
-  /* take time and make sure that msec has actually passed? */
+
   int start = rtc_get_msec();
-  thread_sleep(msec);
+  /* Go into sleep. */ 
+  sleep_thread_sleep(msec);
   int end = rtc_get_msec();
-  //kprintf("start: %d, end: %d, msec: %d\n",start,end,msec);
+
+  /* Make sure that the thread slept for at least the specified
+     amount of time. */
   if (end-start < msec)
-    return -2; /* Then  thread_sleep failed, although should not happen. */
+    return -2; /* thread_sleep has failed, although should not happen. */
   return 0;
 }
-/* -------- */
+
 /**
  * Handle system calls. Interrupts are enabled when this function is
  * called.
@@ -128,7 +152,6 @@ void syscall_handle(context_t *user_context)
   case SYSCALL_FORK:
     V0 = process_fork((void(*)(uint32_t))A1, A2) >= 0 ? 0 : -1;
     break;
-    /* -------------------- */
   case SYSCALL_SEM_CREATE:
     V0 = usr_semaphore_create((uint32_t*)A1,A2);
     break;
@@ -145,9 +168,9 @@ void syscall_handle(context_t *user_context)
     V0 = syscall_sleep(A1);
     break;
   case SYSCALL_SYSTEM_TIME:
+    /* Return the elapsed time since system startup in milliseconds. */
     V0 = rtc_get_msec();
     break;
-    /* ---------------------*/
   default:
     KERNEL_PANIC("Unhandled system call\n");
   }

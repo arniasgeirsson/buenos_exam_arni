@@ -48,7 +48,6 @@
 #include "vm/pagepool.h"
 #include "proc/exit.h"
 #include "proc/usr_semaphore.h"
-#include "lib/debug.h"
 
 /** @name Process startup
  *
@@ -284,7 +283,6 @@ process_id_t process_spawn(const char* executable)
         process_table[pid].fds[1] = (gcd_t *)dev->generic_device;
     thread = thread_create((void (*)(uint32_t))(&process_start), (uint32_t)pid);
     thread_run(thread);
-    kprintf("Spawned process %d, parent %d\n",pid,my_pid);
     return pid;
 }
 
@@ -323,11 +321,6 @@ uint32_t process_join(process_id_t pid)
     }
     retval = process_table[pid].retval;
 
-    kprintf("Woke after join on %d, i am %d\n",pid,my_pid); 
-    // process_table[my_pid].children--;
-    
-    
-
     /* Let children see it is gone. */
     process_table[pid].retval = -1;
     /* Make sure we can't join it again. */
@@ -335,8 +328,10 @@ uint32_t process_join(process_id_t pid)
 
     if (process_table[pid].children == 0) {
       process_table[pid].state = PROCESS_FREE;
-      /* ............ */
+
       process_table[my_pid].children--;
+      
+      /* Remove the zombie child from our list of zombie children. */
       if (process_table[my_pid].first_zombie == pid) {
 	process_id_t next = process_table[pid].next_zombie;
 	process_table[my_pid].first_zombie = next;
@@ -351,7 +346,7 @@ uint32_t process_join(process_id_t pid)
 	  process_table[next].prev_zombie = prev;
 	}
       }
-      /* ------------- */
+
     }
     
     spinlock_release(&process_table_slock);
@@ -405,9 +400,7 @@ void finish_given_process(process_id_t pid, int retval)
         process_table[zombie].retval = -1;
         process_table[zombie].parent = -1;
         process_table[pid].first_zombie = process_table[zombie].next_zombie;
-        process_table[pid].children--;
-	//kprintf("bbb zombie = %d, pid = %d, first zombie: %d, next zombie: %d children: %d\n",zombie, pid,process_table[pid].first_zombie,process_table[zombie].next_zombie,process_table[pid].children);
-    }
+        process_table[pid].children--;    }
 
     if (parent >= 0
         && process_table[parent].state == PROCESS_ZOMBIE) {
@@ -421,17 +414,6 @@ void finish_given_process(process_id_t pid, int retval)
         }
         process_table[pid].state = PROCESS_FREE;
     } else if (parent >= 0) {
-        /* Our parent is alive and well, add us to its list of zombies */
-      /* kprintf("%d Zombie list before:\n",pid);
-      process_id_t k = process_table[parent].first_zombie;
-      int c = 0;
-      while (k >= 0) {
-	kprintf("%d <- %d -> %d\n",process_table[k].prev_zombie,k,process_table[k].next_zombie);
-	k = process_table[k].next_zombie;
-	c++;
-	if (c == 3) break;
-	}*/
-
         process_table[pid].state = PROCESS_ZOMBIE;
         zombie = process_table[parent].first_zombie;
         process_table[pid].next_zombie = zombie;
@@ -439,17 +421,6 @@ void finish_given_process(process_id_t pid, int retval)
             process_table[zombie].prev_zombie = pid;
         }
         process_table[parent].first_zombie = pid;
-
-	/*
-	kprintf("%d Zombie list after:\n",pid);
-      k = process_table[parent].first_zombie;
-      c = 0;
-      while (k >= 0) {
-	kprintf("%d <- %d -> %d\n",process_table[k].prev_zombie,k,process_table[k].next_zombie);
-	k = process_table[k].next_zombie;
-	c++;
-	if (c==3) break;
-	}*/
     } else {
         /* We have no parent, i.e. we are the initial program, and
            will be joined by the startup thread in init/main.c */
@@ -491,9 +462,8 @@ void process_finish(int retval)
 
     if (--process_table[pid].threads == 0) {
         /* We are the last thread - kill process! */
-	/* ---- */
+        /* Destroy all user semaphores created by process pid. */
 	usr_semaphore_process_died(pid);
-	/* ----- */
         vm_destroy_pagetable(thread->pagetable);
         finish_given_process(pid, retval);
     }

@@ -69,9 +69,7 @@
 #define SYSCALL_SEM_P         0x301
 #define SYSCALL_SEM_V         0x302
 
-/* ---------- */
 // System time
 #define SYSCALL_SYSTEM_TIME   0x400
-/* ------------- */
 
 #endif

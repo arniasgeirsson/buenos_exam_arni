@@ -209,10 +209,8 @@ void init(void)
   kwrite("Initializing semaphores\n");
   semaphore_init();
 
-  /* -------------- */
   kwrite("Initializing user semaphores\n");
   usr_semaphore_init();
-  /* ----------- */
 
   kwrite("Initializing device drivers\n");
   device_init();

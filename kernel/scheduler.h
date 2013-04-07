@@ -44,9 +44,12 @@ void scheduler_init(void);
 void scheduler_add_ready(TID_t t);
 void scheduler_schedule(void);
 
-/* -- */
+/* Add the calling thread to the list of
+   time sleeping threads. */
 void scheduler_add_time_sleeping_thread(int msec);
+
+/* Checks if the ready queue is empty
+   and returns the result. */
 int scheduler_is_ready_queue_empty(void);
-/* -- */
 
 #endif /* BUENOS_KERNEL_SCHEDULER_H */
