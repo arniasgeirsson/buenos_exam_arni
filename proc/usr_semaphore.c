@@ -93,8 +93,9 @@ int usr_semaphore_find_empty_spot(void)
  */
 int usr_semaphore_sem_exist(usr_sem_t *sem)
 {
-  return usr_semaphore_table[*sem].owner_pid == process_get_current_process()
-    && usr_semaphore_table[*sem].sem_addr == (uint32_t)sem;
+  return (*sem < CONFIG_MAX_SEMAPHORES)
+    && (usr_semaphore_table[*sem].owner_pid == process_get_current_process()
+	&& usr_semaphore_table[*sem].sem_addr == (uint32_t)sem);
 }
 
 /**

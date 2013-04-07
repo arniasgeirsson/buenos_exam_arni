@@ -1,8 +1,8 @@
 #include "tests/lib.h"
 
-usr_sem_t mutex, write, incoming;
+usr_sem_t gate,rmutex, writing;
 
-int readcount=0;
+int readcount = 0;
 
 
 /* this is not fair, the way I want it to be */
@@ -11,30 +11,30 @@ int readcount=0;
 void writer(int id) {
   while (1) {
     // producing data
-    syscall_sem_p(&incoming);
-    syscall_sem_p(&write);
-    syscall_sem_v(&incoming);
+    syscall_sem_p(&gate);
+    syscall_sem_p(&writing);
+    syscall_sem_v(&gate);
     // writing data
-    printf("Writer %d wrote\n", id);
-    syscall_sem_v(&write);
+    printf("Writer %d writing.\n", id);
+    syscall_sem_v(&writing);
   }
 }
 
 void reader(int id) {
   while (1) {
-    syscall_sem_p(&incoming);
-    syscall_sem_p(&mutex);
+    syscall_sem_p(&gate);
+    syscall_sem_p(&rmutex);
     readcount += 1;
-    if (readcount == 1) { syscall_sem_p(&write); }
-    syscall_sem_v(&mutex);
-    syscall_sem_v(&incoming);
+    if (readcount == 1) { syscall_sem_p(&writing); }
+    syscall_sem_v(&rmutex);
+    syscall_sem_v(&gate);
     // reading data
-    printf("Reader %d read\n", id);
+    printf("Reader %d reading.\n", id);
 
-    syscall_sem_p(&mutex);
+    syscall_sem_p(&rmutex);
     readcount -= 1;
-    if (readcount == 0) { syscall_sem_v(&write); }
-    syscall_sem_v(&mutex);
+    if (readcount == 0) { syscall_sem_v(&writing); }
+    syscall_sem_v(&rmutex);
   }
 }
 
@@ -42,11 +42,11 @@ int main() {
   int readers = 10, writers = 10;
   int i;
   printf("create 1%s\n","");
-  syscall_sem_create(&mutex, 1);
+  syscall_sem_create(&rmutex, 1);
   printf("create 2%s\n","");
-  syscall_sem_create(&write, 1);
+  syscall_sem_create(&writing, 1);
   printf("create 3%s\n","");
-  syscall_sem_create(&incoming, 1);
+  syscall_sem_create(&gate, 1);
   for (i = 0; i < readers; i++) {
     if (syscall_fork(reader, i) == -1) {
       printf("\nNot enough threads to support the simulation, halting\n");

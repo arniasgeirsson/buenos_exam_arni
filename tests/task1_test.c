@@ -1,7 +1,6 @@
 #include "tests/lib.h"
 
 static const char prog[] = "[disk]totalsems";
-static const char prog2[] = "[disk]wrongsem";
 
 usr_sem_t sem, sem4;
 
@@ -64,15 +63,6 @@ int main(void)
   if (rc != 0) syscall_halt(); /* Something is wrong. */
   rc = syscall_sem_create(&sem1,1);
   printf("- 1.4: Return value from syscall_sem_create is %d [%d]\n",rc,-5);
-
-  /* Test 5: Trying to use a semaphore that is not yours. */
-  printf("Test 5: Trying to use a semaphore that is not mine.%s\n","");
-  usr_sem_t addr;
-  addr = syscall_join(syscall_exec(prog2));
-  if ((int)addr < 0) syscall_halt(); /* Something is wrong. */
-
-  rc = syscall_sem_p(&addr);
-  printf("- 1.5.2: Return value from child is %d [%d]\n",rc,-3);
 
   /* Section 2 - Using a working semaphore. */
   printf("\nTesting assignment 1 - section 2%s\n","");
