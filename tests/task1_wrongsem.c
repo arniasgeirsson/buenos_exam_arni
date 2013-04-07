@@ -2,10 +2,10 @@
 
 int main(void)
 {
-  usr_sem_t addr = 100;
+  usr_sem_t addr;
   int rc;
-  /* Trying to use a semaphore created by another process.*/
-  rc = syscall_sem_v(&addr);
-  syscall_exit(rc);
+  rc = syscall_sem_create(&addr,2);
+  if (rc != 0) syscall_halt(); /* Something is wrong */
+  syscall_exit(addr);
   return 0;
 }

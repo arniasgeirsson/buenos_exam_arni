@@ -50,14 +50,13 @@ int main(void)
   rc = syscall_sem_create(&sem1,1);
   printf("1.4: Return value from sem create is %d [%d]\n",rc,-5);
 
-  /* Test 5: ####Try to use a semaphore that is not yours. */
-  usr_sem_t addr = 100;
-  rc = syscall_sem_create(&addr,1);
-  if (rc != 0) syscall_halt(); /* Something is wrong. */
+  /* Test 5: Try to use a semaphore that is not yours. */
+  usr_sem_t addr;
+  addr = syscall_join(syscall_exec("[disk]test6"));
+  if ((int)addr < 0) syscall_halt(); /* Something is wrong. */
 
-  /* Something goes wrong all of the sudden, when i create more than 1 child. */
-  //rc = syscall_join(syscall_exec("[disk]test6"));
-  printf("1.5: Return value from child is %d [%d]\n",rc,-5);
+  rc = syscall_sem_p(&addr);
+  printf("1.5.2: Return value from child is %d [%d]\n",rc,-3);
 
   /* Section 2 - Using a working semaphore. */
   printf("Testing assignment 1 - section 2%s\n","");
@@ -73,8 +72,6 @@ int main(void)
   /* Test 3: Trying to release an initialized semaphore. */
   rc = syscall_sem_v(&sem2);
   printf("2.3: Return value from sem v is now %d [%d]\n",rc,0);
-
-  /* Test x: ####What about releasing sem2 again ? idk is there something speciel supposed to happen? should be moved to section 1? */
 
   /* Test 4: Trying to create a semaphore with a positive value v, v > 1
      And trying to take it v times before releasing it v times. */
@@ -150,7 +147,5 @@ int main(void)
   }
   printf("4.2: Could create %d semaphores [%d], rc was %d [%d]\n",total_sems,ts,rc,-2);
 
-  //sem5=5;
-  //sem5=sem5;
   return 0;
 }
