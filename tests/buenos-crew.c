@@ -14,11 +14,9 @@ void writer(int id) {
     syscall_sem_v(&wmutex);
     syscall_sem_p(&writing);
     // writing data
-    printf("Writer %d wrote\n", id);
-
     syscall_sem_p(&wmutex);
     writecount -= 1;
-    //printf("Writer %d wrote\n", id);
+    printf("Writer %d wrote\n", id);
     if (writecount == 0) { syscall_sem_v(&reading); }
     syscall_sem_v(&wmutex);
     syscall_sem_v(&writing);
@@ -34,8 +32,6 @@ void reader(int id) {
     syscall_sem_v(&rmutex);
     syscall_sem_v(&reading);
     // reading data
-    //printf("Reader %d read\n", id);
-
     syscall_sem_p(&rmutex);
     readcount -= 1;
     printf("Reader %d read\n", id);
@@ -45,15 +41,15 @@ void reader(int id) {
 }
 
 int main() {
-  int readers = 23, writers = 1;
+  int readers = 1, writers = 1;
   int i;
-  printf("create 1%s\n","");
+  printf("create 1\n");
   syscall_sem_create(&rmutex, 1);
-  printf("create 2%s\n","");
+  printf("create 2\n");
   syscall_sem_create(&wmutex, 1);
-  printf("create 3%s\n","");
+  printf("create 3\n");
   syscall_sem_create(&reading, 1);
-  printf("create 4%s\n","");
+  printf("create 4\n");
   syscall_sem_create(&writing, 1);
   for (i = 0; i < readers; i++) {
     syscall_fork(reader, i);
