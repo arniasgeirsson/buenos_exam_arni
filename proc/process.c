@@ -400,7 +400,8 @@ void finish_given_process(process_id_t pid, int retval)
         process_table[zombie].retval = -1;
         process_table[zombie].parent = -1;
         process_table[pid].first_zombie = process_table[zombie].next_zombie;
-        process_table[pid].children--;    }
+        process_table[pid].children--;   
+    }
 
     if (parent >= 0
         && process_table[parent].state == PROCESS_ZOMBIE) {
@@ -414,6 +415,7 @@ void finish_given_process(process_id_t pid, int retval)
         }
         process_table[pid].state = PROCESS_FREE;
     } else if (parent >= 0) {
+        /* Our parent is alive and well, add us to its list of zombies */
         process_table[pid].state = PROCESS_ZOMBIE;
         zombie = process_table[parent].first_zombie;
         process_table[pid].next_zombie = zombie;
