@@ -4,10 +4,6 @@ usr_sem_t gate,rmutex, writing;
 
 int readcount = 0;
 
-
-/* this is not fair, the way I want it to be */
-/* maybe I should redefine my perception of fair? */
-
 void writer(int id) {
   while (1) {
     // producing data
